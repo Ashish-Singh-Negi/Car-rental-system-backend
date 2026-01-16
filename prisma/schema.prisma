@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  username   String    @unique
+  password   String
+  created_at DateTime  @default(now())
+  booking    Booking[]
+}
+
+model Booking {
+  id           Int      @id @default(autoincrement())
+  user_id      Int
+  car_name     String
+  days         Int
+  rent_per_day Int
+  status       Status
+  created_at   DateTime @default(now())
+  user         User     @relation(fields: [user_id], references: [id])
+}
+
+enum Status {
+  Booked
+  Completed
+  Cancelled
+}
