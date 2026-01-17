@@ -192,6 +192,6 @@ describe("GET /bookings/:id", async () => {
       .set("Authorization", `Bearer ${TOKEN}`);
 
     expect(res.status).toBe(404);
-    expect(res.body.data.message).toBe("bookingId not found");
+    expect(res.body.err.message).toBe("bookingId not found");
   });
 });
