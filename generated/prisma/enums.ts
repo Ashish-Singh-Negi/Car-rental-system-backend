@@ -10,9 +10,9 @@
 */
 
 export const Status = {
-  Booked: 'Booked',
-  Completed: 'Completed',
-  Cancelled: 'Cancelled'
+  booked: 'booked',
+  completed: 'completed',
+  cancelled: 'cancelled'
 } as const
 
 export type Status = (typeof Status)[keyof typeof Status]

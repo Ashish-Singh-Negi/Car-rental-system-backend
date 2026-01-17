@@ -1,7 +1,6 @@
 import express from "express";
-import { errorResponse, successResponse } from "./utils/responses.js";
-import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { errorResponse, successResponse } from "./utils/responses.js";
 import { prisma } from "../lib/prisma.js";
 import { generateToken } from "./utils/generateToken.js";
 import { authMiddleware } from "./middleware/authMiddleware.js";
@@ -9,18 +8,14 @@ import { authMiddleware } from "./middleware/authMiddleware.js";
 export const app = express();
 app.use(express.json());
 
-// all api routes
-
 app.post("/auth/signup", async (req, res) => {
   const { username, password } = req.body;
 
-  console.log("BEFORE PRISMA");
   await prisma.user.findFirst({
     where: {
       id: 108,
     },
   });
-  console.log("AFTER PRISMA");
 
   if (!username || !password) {
     return res.status(400).json(errorResponse("invalid inputs"));
@@ -35,7 +30,6 @@ app.post("/auth/signup", async (req, res) => {
     },
   });
 
-  console.log(usernameExist);
   if (usernameExist)
     return res.status(409).json(errorResponse("username already exists"));
 
@@ -71,7 +65,6 @@ app.post("/auth/login", async (req, res) => {
     },
   });
 
-  console.log(user);
   if (!user) return res.status(401).json(errorResponse("user does not exist"));
 
   // check password match or not
@@ -94,13 +87,6 @@ export function calculateBookingCost(days: number, rentPerday: number) {
 
 app.post("/bookings", authMiddleware, async (req, res) => {
   const { carName, days, rentPerDay } = req.body;
-  console.log(`🚀 ~ { carName, days, rentPerDay }:`, {
-    carName,
-    days,
-    rentPerDay,
-  });
-
-  console.log(req.user);
 
   if (!carName || !days || !rentPerDay)
     return res.status(400).json(errorResponse("invalid inputs"));
@@ -108,43 +94,78 @@ app.post("/bookings", authMiddleware, async (req, res) => {
   if (days < 0 || days > 365 || rentPerDay < 0 || rentPerDay > 2000)
     return res.status(400).json(errorResponse("invalid inputs"));
 
-  const booking = await prisma.booking.create({
-    data: {
-      user_id: req.user.userId,
-      car_name: carName,
-      days: days,
-      rent_per_day: rentPerDay,
-      status: "Booked",
-    },
-  });
-  console.log("Booking  ", booking);
+  try {
+    const booking = await prisma.booking.create({
+      data: {
+        user_id: req.user.userId,
+        car_name: carName,
+        days: days,
+        rent_per_day: rentPerDay,
+        status: "booked",
+      },
+    });
 
-  const bookingCost = calculateBookingCost(days, rentPerDay);
+    const bookingCost = calculateBookingCost(days, rentPerDay);
 
-  res.status(201).json(
-    successResponse("Booking created successfully", {
-      bookingId: booking.id,
-      totalCost: bookingCost,
-    })
-  );
+    res.status(201).json(
+      successResponse("Booking created successfully", {
+        bookingId: booking.id,
+        totalCost: bookingCost,
+      }),
+    );
+  } catch (error) {
+    console.log(error);
+  }
 });
 
 app.get("/bookings/:id", authMiddleware, async (req, res) => {
   const bid = Number(req.params.id);
-  const isSummary = Boolean(req.query.summary);
+  const isSummaryTrue = (req.query.summary && true) || false;
 
-  const booking = await prisma.booking.findFirst({
+  if (!isSummaryTrue) {
+    const bookingRecord = await prisma.booking.findFirst({
+      where: {
+        id: bid,
+      },
+      omit: {
+        user_id: true,
+      },
+    });
+    if (!bookingRecord)
+      return res.status(404).json(errorResponse("bookingId not found"));
+
+    res.status(200).json(
+      successResponse(`Booking ${bid} found`, {
+        ...bookingRecord,
+        totalCost: bookingRecord.days * bookingRecord.rent_per_day,
+      }),
+    );
+  }
+
+  const bookingRecords = await prisma.booking.findMany({
     where: {
-      id: bid,
-    },
-    omit: {
-      user_id: true,
+      user_id: req.user.userId,
     },
   });
-  if (!booking)
-    return res.status(404).json(errorResponse("bookingId not found"));
+  if (!bookingRecords.length) {
+    return res.status(404).json(errorResponse("Bookings not found"));
+  }
 
-  res.status(200).json(successResponse(`Booking ${bid} found`, booking));
+  const totalBookings = bookingRecords.length;
+
+  let totalAmountSpent = 0;
+  bookingRecords.forEach((booking) => {
+    totalAmountSpent = totalAmountSpent + booking.days * booking.rent_per_day;
+  });
+
+  return res.status(200).json(
+    successResponse("Bookings summary", {
+      userId: req.user.userId,
+      username: req.user.username,
+      totalBookings,
+      totalAmountSpent,
+    }),
+  );
 });
 
 const PORT = 3000;

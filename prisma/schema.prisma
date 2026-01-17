@@ -27,7 +27,7 @@ model Booking {
 }
 
 enum Status {
-  Booked
-  Completed
-  Cancelled
+  booked
+  completed
+  cancelled
 }

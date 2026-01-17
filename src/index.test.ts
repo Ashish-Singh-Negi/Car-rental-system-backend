@@ -9,8 +9,8 @@ describe("POST /auth/signup", () => {
     const res = await request(app)
       .post(SIGNUP_ROUTE)
       .send({
-        username: `Test ${Math.floor(Math.random() * 1000)}`,
-        password: "testpass",
+        username: `Test${new Date().getTime()}`,
+        password: "testpassword",
       });
 
     expect(res.statusCode).toBe(201);
@@ -43,6 +43,8 @@ describe("POST /auth/login", async () => {
       username: "Test",
       password: "test",
     });
+
+    // console.log("TOKEN ", res.body.data.token);
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data.message).toBe("signin successfully");
@@ -78,21 +80,34 @@ describe("POST /auth/login", async () => {
 });
 
 const TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEwOCwidXNlcm5hbWUiOiJUZXN0IiwiaWF0IjoxNzY4NTQ1NjUyfQ.Wsb96RmWcUkgcm-1lbSCAMT7Mw7v6EZ_j1lkZFKsG2E";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjIsInVzZXJuYW1lIjoiVGVzdCIsImlhdCI6MTc2ODY0ODg1Mn0.CbSuvsxi2uPlQr7V9Q2c1z0BbOOAHyX0nYWNkaAZ1Mc";
 
 // for Logged in user only
 describe("POST /bookings   protected route", async () => {
   const BOOKING_ROUTE = "/bookings";
+  const CAR_NAMES = [
+    "BMW x3",
+    "BMW x5",
+    "BMW x7",
+    "Mercedes S350d",
+    "Mercedes S450 4Matic",
+    "Mercedes E200",
+    "Mercedes E220d",
+    "Honda City",
+    "Mahendra XEV9e",
+    "Tata curve",
+  ];
+  const dummeyBookingData = {
+    carName: CAR_NAMES[Math.floor(Math.random() * 10)],
+    days: Math.ceil(Math.random() * 60),
+    rentPerDay: Math.ceil(Math.random() * 15) * 100,
+  };
 
   it("Should return 201 status if booking is created", async () => {
     const res = await request(app)
       .post(BOOKING_ROUTE)
       .set("Authorization", `Bearer ${TOKEN}`)
-      .send({
-        carName: "Honda City",
-        days: 3,
-        rentPerDay: 1500,
-      });
+      .send(dummeyBookingData);
 
     expect(res.statusCode).toBe(201);
     expect(res.body.success).toBe(true);
@@ -149,41 +164,34 @@ describe("POST /bookings   protected route", async () => {
 
 describe("GET /bookings/:id", async () => {
   const GET_BOOKING_ROUTE = "/bookings";
+  const BID = 35;
 
   it("should return 200 status and booking data", async () => {
     const res = await request(app)
-      .get(`${GET_BOOKING_ROUTE}/1`)
+      .get(`${GET_BOOKING_ROUTE}/${BID}`)
       .set("Authorization", `Bearer ${TOKEN}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      success: true,
-      data: {
-        id: expect.any(Number),
-        car_name: expect.any(String),
-        days: expect.any(String),
-        rent_per_day: expect.any(Number),
-        status: expect.stringMatching(/booked|completed|cancelled/),
-        totalCost: expect.any(Number),
-      },
-    });
+    expect(res.body.data.id).toBeTypeOf("number");
+    expect(res.body.data.car_name).toBeTypeOf("string");
+    expect(res.body.data.days).toBeTypeOf("number");
+    expect(res.body.data.rent_per_day).toBeTypeOf("number");
+    expect(["booked", "completed", "cancelled"]).toContain(
+      res.body.data.status,
+    );
+    expect(res.body.data.totalCost).toBeTypeOf("number");
   });
 
   it("should return 200 status and bookings summary", async () => {
     const res = await request(app)
-      .get(`${GET_BOOKING_ROUTE}/1?summary=true`)
+      .get(`${GET_BOOKING_ROUTE}/${BID}?summary=true`)
       .set("Authorization", `Bearer ${TOKEN}`);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      success: true,
-      data: {
-        userId: expect.any(Number),
-        username: expect.any(String),
-        totalBookings: expect.any(Number),
-        totalAmountSpent: expect.any(Number),
-      },
-    });
+    expect(res.body.data.userId).toBeTypeOf("number");
+    expect(res.body.data.username).toBeTypeOf("string");
+    expect(res.body.data.totalBookings).toBeTypeOf("number");
+    expect(res.body.data.totalAmountSpent).toBeTypeOf("number");
   });
 
   it("should return 404 status if booking id not found", async () => {

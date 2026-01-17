@@ -1,4 +1,4 @@
-const successResponse = (message: string, data: {}) => {
+const successResponse = (message?: string, data?: any) => {
   return {
     success: true,
     data: {
@@ -8,7 +8,7 @@ const successResponse = (message: string, data: {}) => {
   };
 };
 
-const errorResponse = (message: string, error?: any) => {
+const errorResponse = (message?: string, error?: any) => {
   return {
     success: false,
     err: {
