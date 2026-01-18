@@ -8,13 +8,10 @@ const successResponse = (message?: string, data?: any) => {
   };
 };
 
-const errorResponse = (message?: string, error?: any) => {
+const errorResponse = (errorMessage?: string) => {
   return {
     success: false,
-    err: {
-      message,
-      error,
-    },
+    error: errorMessage,
   };
 };
 

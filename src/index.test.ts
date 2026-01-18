@@ -21,7 +21,7 @@ describe("POST /auth/signup", () => {
     const res = await request(app).post(SIGNUP_ROUTE).send({});
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.err.message).toBe("invalid inputs");
+    expect(res.body.error).toBe("invalid inputs");
   });
 
   it("should return 409 status if username already exists", async () => {
@@ -31,7 +31,7 @@ describe("POST /auth/signup", () => {
     });
 
     expect(res.statusCode).toBe(409);
-    expect(res.body.err.message).toBe("username already exists");
+    expect(res.body.error).toBe("username already exists");
   });
 });
 
@@ -55,7 +55,7 @@ describe("POST /auth/login", async () => {
     const res = await request(app).post(LOGIN_ROUTE).send({});
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.err.message).toBe("invalid inputs");
+    expect(res.body.error).toBe("invalid inputs");
   });
 
   it("Should return 401 status if user does not exist", async () => {
@@ -65,7 +65,7 @@ describe("POST /auth/login", async () => {
     });
 
     expect(res.statusCode).toBe(401);
-    expect(res.body.err.message).toBe("user does not exist");
+    expect(res.body.error).toBe("user does not exist");
   });
 
   it("Should return 401 status if password incorrect", async () => {
@@ -75,7 +75,7 @@ describe("POST /auth/login", async () => {
     });
 
     expect(res.statusCode).toBe(401);
-    expect(res.body.err.message).toBe("incorrect password");
+    expect(res.body.error).toBe("incorrect password");
   });
 });
 
@@ -120,7 +120,7 @@ describe("POST /bookings   protected route", async () => {
     const res = await request(app).post(BOOKING_ROUTE).send({});
 
     expect(res.statusCode).toBe(401);
-    expect(res.body.err.message).toBe("unauthorized");
+    expect(res.body.error).toBe("unauthorized");
   });
 
   it("Should return 400 status if inputs are not provided", async () => {
@@ -130,7 +130,7 @@ describe("POST /bookings   protected route", async () => {
       .send({});
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.err.message).toBe("invalid inputs");
+    expect(res.body.error).toBe("invalid inputs");
   });
 
   it("should return 400 status if days are more then 365 days", async () => {
@@ -144,7 +144,7 @@ describe("POST /bookings   protected route", async () => {
       });
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.err.message).toBe("invalid inputs");
+    expect(res.body.error).toBe("invalid inputs");
   });
 
   it("should return 400 status if rent per day is more then 2000", async () => {
@@ -158,11 +158,11 @@ describe("POST /bookings   protected route", async () => {
       });
 
     expect(res.statusCode).toBe(400);
-    expect(res.body.err.message).toBe("invalid inputs");
+    expect(res.body.error).toBe("invalid inputs");
   });
 });
 
-describe("GET /bookings/:id", async () => {
+describe("GET /bookings/:bookingId", async () => {
   const GET_BOOKING_ROUTE = "/bookings";
   const BID = 35;
 
@@ -200,6 +200,65 @@ describe("GET /bookings/:id", async () => {
       .set("Authorization", `Bearer ${TOKEN}`);
 
     expect(res.status).toBe(404);
-    expect(res.body.err.message).toBe("bookingId not found");
+    expect(res.body.error).toBe("bookingId not found");
   });
+});
+
+describe("PUT /bookings/:bookingId", async () => {
+  const PUT_BOOKING_ROUTE = "/bookings";
+  const BOOKINGID = 35;
+
+  it("should return 200 status and update booking details", async () => {
+    const res = await request(app)
+      .put(`${PUT_BOOKING_ROUTE}/${BOOKINGID}`)
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        carName: "Verna",
+        days: 4,
+        rentPerDay: 1600,
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.message).toBe("Booking updated successfully");
+    expect(res.body.data.booking).toEqual({
+      id: expect.any(Number),
+      car_name: expect.any(String),
+      days: expect.any(Number),
+      rent_per_day: expect.any(Number),
+      status: expect.stringMatching(/booked|completed|cancelled/),
+      totalCost: expect.any(Number),
+    });
+  });
+
+  it("should return 200 status and update booking status", async () => {
+    const res = await request(app)
+      .put(`${PUT_BOOKING_ROUTE}/${BOOKINGID}`)
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({
+        status: "cancelled",
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.message).toBe("Booking updated successfully");
+    expect(res.body.data.booking).toEqual({
+      id: expect.any(Number),
+      car_name: expect.any(String),
+      days: expect.any(Number),
+      rent_per_day: expect.any(Number),
+      status: expect.stringMatching(/booked|completed|cancelled/),
+      totalCost: expect.any(Number),
+    });
+  });
+
+  it("should return 400 status if inputs not provided", async () => {
+    const res = await request(app)
+      .put(`${PUT_BOOKING_ROUTE}/${BOOKINGID}`)
+      .set("Authorization", `Bearer ${TOKEN}`)
+      .send({});
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error).toBe("invalid inputs");
+  });
+
+  // to be added
 });
