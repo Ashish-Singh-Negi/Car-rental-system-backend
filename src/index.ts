@@ -118,14 +118,14 @@ app.post("/bookings", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/bookings/:id", authMiddleware, async (req, res) => {
-  const bid = Number(req.params.id);
+app.get("/bookings/:bookingId", authMiddleware, async (req, res) => {
+  const bookingId = Number(req.params.bookingId);
   const isSummaryTrue = (req.query.summary && true) || false;
 
   if (!isSummaryTrue) {
     const bookingRecord = await prisma.booking.findFirst({
       where: {
-        id: bid,
+        id: bookingId,
       },
       omit: {
         user_id: true,
@@ -135,7 +135,7 @@ app.get("/bookings/:id", authMiddleware, async (req, res) => {
       return res.status(404).json(errorResponse("bookingId not found"));
 
     res.status(200).json(
-      successResponse(`Booking ${bid} found`, {
+      successResponse(`Booking ${bookingId} found`, {
         ...bookingRecord,
         totalCost: bookingRecord.days * bookingRecord.rent_per_day,
       }),
@@ -168,6 +168,95 @@ app.get("/bookings/:id", authMiddleware, async (req, res) => {
       totalAmountSpent,
     }),
   );
+});
+
+app.put("/bookings/:bookingId", authMiddleware, async (req, res) => {
+  const bookingId = Number(req.params.bookingId);
+
+  const { carName, days, rentPerDay } = req.body;
+  const { status } = req.body;
+
+  if ((!carName || !days || !rentPerDay) && !status)
+    return res.status(400).json(errorResponse("invalid inputs"));
+
+  const bookingRecord = await prisma.booking.findFirst({
+    where: {
+      id: bookingId,
+    },
+  });
+  if (!bookingRecord)
+    return res.status(404).json(errorResponse("booking not found"));
+
+  // check if booking belongs to owner or not
+  if (bookingRecord.user_id != req.user.userId)
+    return res
+      .status(403)
+      .json(errorResponse("booking does not belong to user"));
+
+  let updatedBookingRecord;
+
+  // check what to update
+  if (status) {
+    updatedBookingRecord = await prisma.booking.update({
+      where: {
+        id: bookingId,
+      },
+      data: {
+        status: status,
+      },
+    });
+  } else {
+    updatedBookingRecord = await prisma.booking.update({
+      where: {
+        id: bookingId,
+      },
+      data: {
+        car_name: carName,
+        days: days,
+        rent_per_day: rentPerDay,
+      },
+    });
+  }
+
+  res.status(200).json(
+    successResponse("Booking updated successfully", {
+      booking: {
+        id: updatedBookingRecord.id,
+        car_name: updatedBookingRecord.car_name,
+        days: updatedBookingRecord.days,
+        rent_per_day: updatedBookingRecord.rent_per_day,
+        status: updatedBookingRecord.status,
+        totalCost:
+          updatedBookingRecord.days * updatedBookingRecord.rent_per_day,
+      },
+    }),
+  );
+});
+
+app.delete("/bookings/:bookingId", authMiddleware, async (req, res) => {
+  const bookingId = Number(req.params.bookingId);
+
+  const bookingRecord = await prisma.booking.findFirst({
+    where: {
+      id: bookingId,
+    },
+  });
+  if (!bookingRecord)
+    return res.status(404).json(errorResponse("booking not found"));
+
+  // check if booking belongs to user or not
+  if (bookingRecord.user_id != req.user.userId)
+    return res
+      .status(403)
+      .json(errorResponse("booking does not belong to user"));
+
+  await prisma.booking.delete({
+    where: {
+      id: bookingId,
+    },
+  });
+
+  res.status(200).json(successResponse("Booking deleted successfully"));
 });
 
 const PORT = 3000;
