@@ -151,11 +151,13 @@ app.get("/bookings/:id", authMiddleware, async (req, res) => {
     return res.status(404).json(errorResponse("Bookings not found"));
   }
 
-  const totalBookings = bookingRecords.length;
-
+  let totalBookings = 0;
   let totalAmountSpent = 0;
   bookingRecords.forEach((booking) => {
-    totalAmountSpent = totalAmountSpent + booking.days * booking.rent_per_day;
+    if (booking.status != "cancelled") {
+      totalBookings = totalBookings + 1;
+      totalAmountSpent = totalAmountSpent + booking.days * booking.rent_per_day;
+    }
   });
 
   return res.status(200).json(
